@@ -1,72 +1,61 @@
 import Link from "next/link";
-import { createClient } from "../lib/supabase";
 import Header from "../components/Header";
+import { createClient } from "../lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-async function getNews() {
+export default async function HomePage() {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  const today = new Date();
+  const start = new Date(today);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(today);
+  end.setHours(23, 59, 59, 999);
+
+  const { data: news } = await supabase
     .from("news")
     .select("*")
-    .eq("published", true)
+    .eq("status", "published")
     .neq("epaper_layout", "direct-newspaper")
+    .gte("published_at", start.toISOString())
+    .lte("published_at", end.toISOString())
+    .order("published_at", { ascending: false });
+
+  const { data: epapers } = await supabase
+    .from("news")
+    .select("*")
+    .eq("status", "published")
+    .eq("epaper_layout", "direct-newspaper")
     .order("published_at", { ascending: false })
     .limit(2);
-
-  if (error) {
-    console.error(error);
-    return [];
-  }
-
-  return data || [];
-}
-
-export default async function HomePage() {
-  const news = await getNews();
 
   return (
     <>
       <Header />
 
-      <main className="home-page">
-
+      <main className="page">
         <section className="hero">
-          <div className="hero-inner">
-            <span>महाराष्ट्रातील आपले विश्वासू वृत्तमाध्यम</span>
-
-            <h1>लोकमदत</h1>
-
-            <p>
-              ताज्या आणि महत्त्वाच्या बातम्या थेट आपल्या मोबाईलवर.
-            </p>
-          </div>
+          <h1>लोकमदत</h1>
+          <p>
+            महाराष्ट्रातील ताज्या आणि महत्त्वाच्या बातम्या
+          </p>
         </section>
 
-        <section className="latest-news">
-          <div className="section-heading">
-            <div>
-              <small>NEWS</small>
-              <h2>ताज्या बातम्या</h2>
-            </div>
+        <section>
+          <h2 className="section-title">ताज्या बातम्या</h2>
 
-            <Link href="/archive">
-              सर्व बातम्या →
-            </Link>
-          </div>
-
-          {news.length === 0 ? (
+          {!news || news.length === 0 ? (
             <div className="empty-state">
-              आजच्या बातम्या उपलब्ध नाहीत.
+              <h2>आजच्या बातम्या उपलब्ध नाहीत</h2>
+              <p>लवकरच नवीन बातम्या प्रकाशित केल्या जातील.</p>
             </div>
           ) : (
             <div className="news-grid">
-
               {news.map((item) => {
                 const title =
                   item.headline ||
-                  item.header ||
                   item.title ||
                   "लोकमदत बातमी";
 
@@ -74,85 +63,99 @@ export default async function HomePage() {
                   item.main_image_url ||
                   item.image_url ||
                   item.cover_image ||
-                  null;
+                  item.image;
 
                 return (
-                  <article
-                    className="news-card"
+                  <Link
+                    href={`/news/${item.id}`}
                     key={item.id}
+                    className="news-card"
                   >
-
                     {image && (
                       <img
                         src={image}
                         alt={title}
+                        className="news-card-image"
                       />
                     )}
 
-                    <div className="news-card-body">
+                    <div className="news-card-content">
+                      <h2>{title}</h2>
 
-                      {item.location && (
-                        <span className="news-location">
-                          📍 {item.location}
-                        </span>
-                      )}
-
-                      <h3>
-                        <Link href={`/news/${item.id}`}>
-                          {title}
-                        </Link>
-                      </h3>
-
-                      <p>
-                        {(
-                          item.content ||
-                          item.body ||
-                          ""
-                        ).slice(0, 150)}
-                        {item.content?.length > 150 ? "..." : ""}
-                      </p>
-
-                      <Link
-                        href={`/news/${item.id}`}
-                        className="read-more"
-                      >
-                        पूर्ण बातमी वाचा →
-                      </Link>
-
+                      <div className="news-meta">
+                        {item.location && `📍 ${item.location}`}
+                        {item.published_at &&
+                          ` • ${new Date(
+                            item.published_at
+                          ).toLocaleDateString("mr-IN")}`}
+                      </div>
                     </div>
-
-                  </article>
+                  </Link>
                 );
               })}
-
             </div>
           )}
         </section>
 
-        <section className="epaper-section">
-          <div className="section-heading">
-            <div>
-              <small>E-PAPER</small>
-              <h2>ई-पेपर</h2>
+        <section>
+          <h2 className="section-title">ई-पेपर</h2>
+
+          {!epapers || epapers.length === 0 ? (
+            <div className="empty-state">
+              <p>सध्या ई-पेपर उपलब्ध नाही.</p>
             </div>
+          ) : (
+            <div className="epaper-list">
+              {epapers.map((paper) => {
+                const title =
+                  paper.headline ||
+                  paper.title ||
+                  "लोकमदत ई-पेपर";
 
-            <Link href="/epaper">
-              सर्व अंक →
+                const image =
+                  paper.main_image_url ||
+                  paper.image_url ||
+                  paper.cover_image ||
+                  paper.image;
+
+                return (
+                  <Link
+                    href={`/news/${paper.id}`}
+                    key={paper.id}
+                    className="epaper-card"
+                  >
+                    {image && (
+                      <img
+                        src={image}
+                        alt={title}
+                        className="epaper-cover"
+                      />
+                    )}
+
+                    <div className="epaper-card-content">
+                      <h2>{title}</h2>
+
+                      {paper.published_at && (
+                        <p>
+                          📅{" "}
+                          {new Date(
+                            paper.published_at
+                          ).toLocaleDateString("mr-IN")}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          <p style={{ marginTop: "20px" }}>
+            <Link href="/epaper" className="read-button">
+              सर्व ई-पेपर पाहा →
             </Link>
-          </div>
-
-          <div className="epaper-placeholder">
-            <h3>📰 लोकमदत ई-पेपर</h3>
-            <p>
-              आजचा आणि मागील अंक पाहण्यासाठी ई-पेपर विभागाला भेट द्या.
-            </p>
-
-            <Link href="/epaper">
-              ई-पेपर पहा →
-            </Link>
-          </div>
+          </p>
         </section>
-
       </main>
     </>
   );
