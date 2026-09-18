@@ -1,1 +1,71 @@
-"use client";export default function ShareButtons({url,title}){const share=async()=>{try{if(navigator.share){await navigator.share({title,text:title,url})}else{await navigator.clipboard.writeText(url);alert('लिंक कॉपी झाली')}}catch{}};const wa=()=>{location.href='https://wa.me/?text='+encodeURIComponent((title?title+'\n\n':'')+url)};const copy=async()=>{try{await navigator.clipboard.writeText(url);alert('लिंक कॉपी झाली')}catch{prompt('लिंक कॉपी करा:',url)}};return <div className="article-share"><button onClick={share}>📤 Share to Apps</button><button className="wa" onClick={wa}>🟢 WhatsApp</button><button onClick={copy}>🔗 Copy Link</button><a href="/">← आणखी बातम्या</a></div>}
+"use client";
+
+export default function ShareButtons({ title }) {
+  const shareUrl =
+    typeof window !== "undefined"
+      ? window.location.href
+      : "";
+
+  async function shareToApps() {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title || "लोकमदत",
+          url: shareUrl,
+        });
+      } catch (error) {
+        // User cancelled sharing
+      }
+    } else {
+      await copyLink();
+      alert("Link copied. You can share it in any app.");
+    }
+  }
+
+  async function shareToWhatsApp() {
+    const text = `${title || "लोकमदत"}\n${shareUrl}`;
+
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(text)}`,
+      "_blank"
+    );
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      alert("Link copied!");
+    } catch (error) {
+      alert("Unable to copy link.");
+    }
+  }
+
+  return (
+    <div className="article-share">
+
+      <button
+        type="button"
+        className="share-primary"
+        onClick={shareToApps}
+      >
+        📤 Share to Apps
+      </button>
+
+      <button
+        type="button"
+        className="share-whatsapp"
+        onClick={shareToWhatsApp}
+      >
+        🟢 Share to WhatsApp
+      </button>
+
+      <button
+        type="button"
+        onClick={copyLink}
+      >
+        🔗 Copy Link
+      </button>
+
+    </div>
+  );
+}
