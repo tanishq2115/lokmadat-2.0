@@ -1,1 +1,66 @@
-"use client";import{useState}from'react';import{createClient}from'@supabase/supabase-js';const supabase=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);export default function Admin(){const[email,setEmail]=useState(''),[password,setPassword]=useState(''),[headline,setHeadline]=useState(''),[location,setLocation]=useState(''),[content,setContent]=useState(''),[image,setImage]=useState(null),[msg,setMsg]=useState('');const login=async()=>{const{error}=await supabase.auth.signInWithPassword({email,password});setMsg(error?error.message:'लॉगिन यशस्वी.')};const publish=async()=>{setMsg('प्रकाशित करत आहे…');const{data:{user}}=await supabase.auth.getUser();if(!user){setMsg('आधी लॉगिन करा.');return}let imageUrl=null;if(image){const ext=(image.name.split('.').pop()||'jpg').toLowerCase(),path=`articles/${crypto.randomUUID()}.${ext}`,up=await supabase.storage.from('news-images').upload(path,image,{upsert:false,contentType:image.type});if(up.error){setMsg(up.error.message);return}imageUrl=supabase.storage.from('news-images').getPublicUrl(path).data.publicUrl}const{error}=await supabase.from('news').insert({headline,location,content,main_image_url:imageUrl,status:'published',epaper_layout:'auto',published_at:new Date().toISOString()});setMsg(error?error.message:'बातमी प्रकाशित झाली.');if(!error){setHeadline('');setLocation('');setContent('');setImage(null)}};return <main className="container admin"><h1>लोकमदत न्यूजरूम 2.0</h1><div className="notice">नवीन server-rendered newsroom. जुन्या डेटावर परिणाम होत नाही.</div><section className="form"><h2>लॉगिन</h2><label>ई-मेल</label><input value={email} onChange={e=>setEmail(e.target.value)}/><label>पासवर्ड</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)}/><button className="primary" onClick={login}>लॉगिन</button></section><section className="form"><h2>बातमी प्रकाशित करा</h2><label>मुख्य मथळा *</label><input value={headline} onChange={e=>setHeadline(e.target.value)}/><label>ठिकाण</label><input value={location} onChange={e=>setLocation(e.target.value)}/><label>फोटो</label><input type="file" accept="image/*" onChange={e=>setImage(e.target.files?.[0]||null)}/><label>संपूर्ण बातमी</label><textarea value={content} onChange={e=>setContent(e.target.value)}/><button className="primary" onClick={publish}>प्रकाशित करा</button></section><p className="meta">{msg}</p></main>}
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "../../lib/supabase";
+
+export default function AdminPage() {
+  const supabase = createClient();
+
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [mode, setMode] = useState("epaper");
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const [paperTitle, setPaperTitle] = useState("");
+  const [paperLocation, setPaperLocation] = useState("");
+  const [paperFiles, setPaperFiles] = useState([]);
+
+  const [articleTitle, setArticleTitle] = useState("");
+  const [articleLocation, setArticleLocation] = useState("");
+  const [articleContent, setArticleContent] = useState("");
+  const [articleFiles, setArticleFiles] = useState([]);
+
+  useEffect(() => {
+    checkLogin();
+  }, []);
+
+  async function checkLogin() {
+    const { data } = await supabase.auth.getSession();
+
+    if (!data.session) {
+      window.location.href = "/login";
+      return;
+    }
+
+    setSession(data.session);
+
+    const { data: p } = await supabase
+      .from("profiles")
+      .select("id,full_name,role")
+      .eq("id", data.session.user.id)
+      .maybeSingle();
+
+    if (!p) {
+      await supabase.auth.signOut();
+      window.location.href = "/login";
+      return;
+    }
+
+    setProfile(p);
+  }
+
+  function showStatus(message) {
+    setStatus(message);
+    setTimeout(() => setStatus(""), 5000);
+  }
+
+  function makeId() {
+    if (
+      window.crypto &&
+      typeof window.crypto.randomUUID === "function"
+    ) {
+      return window.crypto.randomUUID();
+    }
+
+    return (
