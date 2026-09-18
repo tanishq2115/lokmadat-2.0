@@ -1,102 +1,251 @@
 import Link from "next/link";
-import { createClient } from "../../lib/supabase";
+import { notFound } from "next/navigation";
+import { createClient } from "../../../lib/supabase";
+import ShareButtons from "../../../components/ShareButtons";
 
 export const dynamic = "force-dynamic";
 
-export default async function EPaperPage() {
+async function getNews(id) {
   const supabase = createClient();
 
-  const { data: editions, error } = await supabase
+  const { data, error } = await supabase
     .from("news")
     .select("*")
+    .eq("id", id)
     .eq("status", "published")
-    .eq("epaper_layout", "direct-newspaper")
-    .order("published_at", { ascending: false });
+    .single();
 
-  if (error) {
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
+async function getPhotos(id) {
+  const supabase = createClient();
+
+  const { data } = await supabase
+    .from("news_photos")
+    .select("*")
+    .eq("news_id", id)
+    .order("created_at", { ascending: true });
+
+  return data || [];
+}
+
+export async function generateMetadata({ params }) {
+  const { id } = await params;
+  const item = await getNews(id);
+
+  if (!item) {
+    return {
+      title: "बातमी सापडली | लोकमदत",
+    };
+  }
+
+  const title =
+    item.headline ||
+    item.title ||
+    "लोकमदत";
+
+  const description =
+    item.seo_description ||
+    item.content?.slice(0, 160) ||
+    "लोकमदत — महाराष्ट्रातील ताज्या बातम्या.";
+
+  const image =
+    item.main_image_url ||
+    item.image_url ||
+    item.cover_image ||
+    item.image;
+
+  return {
+    title: `${title} | लोकमदत`,
+    description,
+
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      ...(image ? { images: [image] } : {}),
+    },
+
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  };
+}
+
+export default async function NewsPage({ params }) {
+  const { id } = await params;
+
+  const item = await getNews(id);
+
+  if (!item) {
+    notFound();
+  }
+
+  const photos = await getPhotos(id);
+
+  const title =
+    item.headline ||
+    item.title ||
+    "लोकमदत";
+
+  const mainImage =
+    item.main_image_url ||
+    item.image_url ||
+    item.cover_image ||
+    item.image;
+
+  const isEpaper =
+    item.epaper_layout === "direct-newspaper";
+
+  if (isEpaper) {
+    const pages = [];
+
+    if (mainImage) {
+      pages.push(mainImage);
+    }
+
+    for (const photo of photos) {
+      const image =
+        photo.image_url ||
+        photo.url ||
+        photo.photo_url;
+
+      if (image && !pages.includes(image)) {
+        pages.push(image);
+      }
+    }
+
     return (
-      <main className="page">
-        <Link href="/" className="back-link">
-          ← मुख्यपृष्ठ
+      <main className="article-page">
+        <Link href="/epaper" className="back-link">
+          ← ई-पेपर
         </Link>
-        <h1>ई-पेपर</h1>
-        <p>ई-पेपर लोड करताना समस्या आली.</p>
+
+        <h1 className="article-title">
+          {title}
+        </h1>
+
+        <div className="article-meta">
+          {item.location && `📍 ${item.location}`}
+
+          {item.published_at &&
+            ` • ${new Date(
+              item.published_at
+            ).toLocaleDateString("mr-IN")}`}
+        </div>
+
+        <div className="epaper-reader">
+          {pages.length === 0 ? (
+            <div className="empty-state">
+              ई-पेपरचे पेज उपलब्ध नाही.
+            </div>
+          ) : (
+            pages.map((url, index) => (
+              <img
+                key={`${url}-${index}`}
+                src={url}
+                alt={`${title} - पेज ${index + 1}`}
+                className="epaper-page"
+              />
+            ))
+          )}
+        </div>
+
+        <ShareButtons title={title} />
       </main>
     );
   }
 
-  return (
-    <main className="page">
-      <div className="page-header">
-        <Link href="/" className="back-link">
-          ← मुख्यपृष्ठ
-        </Link>
+  const content =
+    item.content ||
+    item.body ||
+    item.story ||
+    "";
 
-        <h1>ई-पेपर</h1>
-        <p>लोकमदतच्या प्रकाशित ई-पेपर आवृत्त्या</p>
+  const paragraphs = content
+    .split(/\n+/)
+    .map((text) => text.trim())
+    .filter(Boolean);
+
+  return (
+    <main className="article-page">
+      <Link href="/" className="back-link">
+        ← मुख्यपृष्ठ
+      </Link>
+
+      <h1 className="article-title">
+        {title}
+      </h1>
+
+      <div className="article-meta">
+        {item.location && `📍 ${item.location}`}
+
+        {item.published_at &&
+          ` • ${new Date(
+            item.published_at
+          ).toLocaleDateString("mr-IN")}`}
       </div>
 
-      {!editions || editions.length === 0 ? (
-        <div className="empty-state">
-          <h2>ई-पेपर उपलब्ध नाही</h2>
+      {mainImage && (
+        <img
+          src={mainImage}
+          alt={title}
+          className="article-image"
+        />
+      )}
+
+      <ShareButtons title={title} />
+
+      <article className="article-content">
+        {paragraphs.length > 0 ? (
+          paragraphs.map((paragraph, index) => (
+            <p key={index}>
+              {paragraph}
+            </p>
+          ))
+        ) : (
           <p>
-            सध्या कोणतीही ई-पेपर आवृत्ती प्रकाशित केलेली नाही.
+            या बातमीचा मजकूर उपलब्ध नाही.
           </p>
-        </div>
-      ) : (
-        <div className="epaper-list">
-          {editions.map((edition) => {
-            const title =
-              edition.headline ||
-              edition.title ||
-              "लोकमदत ई-पेपर";
+        )}
+      </article>
 
-            const image =
-              edition.main_image_url ||
-              edition.image_url ||
-              edition.cover_image ||
-              edition.image;
+      {photos.length > 0 && (
+        <section>
+          <h2 className="section-title">
+            अधिक फोटो
+          </h2>
 
-            return (
-              <article
-                className="epaper-card"
-                key={edition.id}
-              >
-                {image && (
-                  <img
-                    src={image}
-                    alt={title}
-                    className="epaper-cover"
-                  />
-                )}
+          <div className="news-grid">
+            {photos.map((photo, index) => {
+              const image =
+                photo.image_url ||
+                photo.url ||
+                photo.photo_url;
 
-                <div className="epaper-card-content">
-                  <h2>{title}</h2>
+              if (!image) {
+                return null;
+              }
 
-                  {edition.location && (
-                    <p>📍 {edition.location}</p>
-                  )}
-
-                  {edition.published_at && (
-                    <p>
-                      📅{" "}
-                      {new Date(
-                        edition.published_at
-                      ).toLocaleDateString("mr-IN")}
-                    </p>
-                  )}
-
-                  <Link
-                    href={`/news/${edition.id}`}
-                    className="read-button"
-                  >
-                    ई-पेपर वाचा →
-                  </Link>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+              return (
+                <img
+                  key={photo.id || index}
+                  src={image}
+                  alt={`${title} फोटो ${index + 1}`}
+                  className="news-card-image"
+                />
+              );
+            })}
+          </div>
+        </section>
       )}
     </main>
   );
