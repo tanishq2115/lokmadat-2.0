@@ -10,7 +10,6 @@ export default function AdminPage() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-
   const [mode, setMode] = useState("article");
 
   const [articleHeadline, setArticleHeadline] = useState("");
@@ -31,20 +30,20 @@ export default function AdminPage() {
 
   async function checkUser() {
     const {
-      data: { session },
+      data: { session: currentSession },
     } = await supabase.auth.getSession();
 
-    if (!session) {
+    if (!currentSession) {
       window.location.href = "/login";
       return;
     }
 
-    setSession(session);
+    setSession(currentSession);
 
     const { data: profileData } = await supabase
       .from("profiles")
       .select("id, full_name, role")
-      .eq("id", session.user.id)
+      .eq("id", currentSession.user.id)
       .single();
 
     if (!profileData) {
@@ -66,7 +65,7 @@ export default function AdminPage() {
 
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
       /[xy]/g,
-      function (c) {
+      (c) => {
         const r = (Math.random() * 16) | 0;
         const v = c === "x" ? r : (r & 0x3) | 0x8;
         return v.toString(16);
@@ -84,9 +83,7 @@ export default function AdminPage() {
         file.name.split(".").pop()?.toLowerCase() || "jpg";
 
       const path =
-        `${session.user.id}/` +
-        `${newsId}/` +
-        `${Date.now()}-${i}.${extension}`;
+        `${session.user.id}/${newsId}/${Date.now()}-${i}.${extension}`;
 
       const { error } = await supabase.storage
         .from("news-images")
@@ -128,11 +125,10 @@ export default function AdminPage() {
     try {
       const newsId = makeId();
 
-      let imageUrls = [];
-
-      if (articleFiles.length > 0) {
-        imageUrls = await uploadFiles(articleFiles, newsId);
-      }
+      const imageUrls =
+        articleFiles.length > 0
+          ? await uploadFiles(articleFiles, newsId)
+          : [];
 
       const { error } = await supabase.from("news").insert({
         id: newsId,
@@ -145,9 +141,7 @@ export default function AdminPage() {
         status: "published",
         published_at: new Date().toISOString(),
         seo_title: articleHeadline.trim(),
-        seo_description: articleContent
-          .trim()
-          .slice(0, 160),
+        seo_description: articleContent.trim().slice(0, 160),
       });
 
       if (error) {
@@ -175,8 +169,7 @@ export default function AdminPage() {
       setMessage("✅ बातमी यशस्वीपणे प्रकाशित झाली.");
     } catch (error) {
       setMessage(
-        "❌ बातमी प्रकाशित करता आली नाही: " +
-          error.message
+        "❌ बातमी प्रकाशित करता आली नाही: " + error.message
       );
     } finally {
       setPublishing(false);
@@ -201,11 +194,7 @@ export default function AdminPage() {
 
     try {
       const newsId = makeId();
-
-      const imageUrls = await uploadFiles(
-        paperFiles,
-        newsId
-      );
+      const imageUrls = await uploadFiles(paperFiles, newsId);
 
       const { error } = await supabase.from("news").insert({
         id: newsId,
@@ -232,4 +221,257 @@ export default function AdminPage() {
           });
 
         if (photoError) {
-          throw photo
+          throw photoError;
+        }
+      }
+
+      setPaperHeadline("");
+      setPaperLocation("");
+      setPaperCategory("");
+      setPaperFiles([]);
+
+      setMessage("✅ ई-पेपर यशस्वीपणे प्रकाशित झाले.");
+    } catch (error) {
+      setMessage(
+        "❌ ई-पेपर प्रकाशित करता आले नाही: " + error.message
+      );
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  }
+
+  if (loading) {
+    return (
+      <main className="admin-page">
+        <div className="admin-card">
+          <p>न्यूजरूम लोड होत आहे...</p>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="admin-page">
+      <div className="admin-card admin-topbar">
+        <div>
+          <h1>लोकमदत न्यूजरूम</h1>
+
+          {profile && (
+            <p>
+              👤 {profile.full_name || session.user.email}
+            </p>
+          )}
+        </div>
+
+        <button type="button" onClick={logout}>
+          Logout
+        </button>
+      </div>
+
+      <div className="admin-card">
+        <h2>प्रकाशन प्रकार</h2>
+
+        <div className="admin-mode-buttons">
+          <button
+            type="button"
+            className={mode === "epaper" ? "active" : ""}
+            onClick={() => {
+              setMode("epaper");
+              setMessage("");
+            }}
+          >
+            📰 फक्त ई-पेपर
+          </button>
+
+          <button
+            type="button"
+            className={mode === "article" ? "active" : ""}
+            onClick={() => {
+              setMode("article");
+              setMessage("");
+            }}
+          >
+            ✍️ बातमी / News Article
+          </button>
+        </div>
+      </div>
+
+      {message && (
+        <div className="admin-card">
+          <strong>{message}</strong>
+        </div>
+      )}
+
+      {mode === "article" ? (
+        <div className="admin-card">
+          <h2>✍️ नवीन बातमी</h2>
+
+          <form
+            className="admin-form"
+            onSubmit={publishArticle}
+          >
+            <label htmlFor="article-headline">
+              मुख्य मथळा *
+            </label>
+
+            <input
+              id="article-headline"
+              value={articleHeadline}
+              onChange={(e) =>
+                setArticleHeadline(e.target.value)
+              }
+              placeholder="बातमीचा मुख्य मथळा"
+              required
+            />
+
+            <label htmlFor="article-location">
+              ठिकाण
+            </label>
+
+            <input
+              id="article-location"
+              value={articleLocation}
+              onChange={(e) =>
+                setArticleLocation(e.target.value)
+              }
+              placeholder="उदा. मुंबई"
+            />
+
+            <label htmlFor="article-photo">
+              फोटो
+            </label>
+
+            <input
+              id="article-photo"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) =>
+                setArticleFiles(
+                  Array.from(e.target.files || [])
+                )
+              }
+            />
+
+            <label htmlFor="article-content">
+              बातमीचा संपूर्ण मजकूर *
+            </label>
+
+            <textarea
+              id="article-content"
+              value={articleContent}
+              onChange={(e) =>
+                setArticleContent(e.target.value)
+              }
+              placeholder="येथे संपूर्ण बातमी लिहा..."
+              required
+            />
+
+            <button
+              type="submit"
+              disabled={publishing}
+            >
+              {publishing
+                ? "प्रकाशित करत आहे..."
+                : "बातमी प्रकाशित करा"}
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="admin-card">
+          <h2>📰 नवीन ई-पेपर</h2>
+
+          <form
+            className="admin-form"
+            onSubmit={publishEpaper}
+          >
+            <label htmlFor="paper-headline">
+              ई-पेपर शीर्षक *
+            </label>
+
+            <input
+              id="paper-headline"
+              value={paperHeadline}
+              onChange={(e) =>
+                setPaperHeadline(e.target.value)
+              }
+              placeholder="उदा. लोकमदत — 18 सप्टेंबर 2026"
+              required
+            />
+
+            <label htmlFor="paper-location">
+              ठिकाण
+            </label>
+
+            <input
+              id="paper-location"
+              value={paperLocation}
+              onChange={(e) =>
+                setPaperLocation(e.target.value)
+              }
+              placeholder="उदा. मुंबई"
+            />
+
+            <label htmlFor="paper-category">
+              विभाग
+            </label>
+
+            <input
+              id="paper-category"
+              value={paperCategory}
+              onChange={(e) =>
+                setPaperCategory(e.target.value)
+              }
+              placeholder="विभाग"
+            />
+
+            <label htmlFor="paper-pages">
+              ई-पेपर पेज *
+            </label>
+
+            <input
+              id="paper-pages"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) =>
+                setPaperFiles(
+                  Array.from(e.target.files || [])
+                )
+              }
+              required
+            />
+
+            <button
+              type="submit"
+              disabled={publishing}
+            >
+              {publishing
+                ? "प्रकाशित करत आहे..."
+                : "ई-पेपर प्रकाशित करा"}
+            </button>
+          </form>
+        </div>
+      )}
+
+      <div className="admin-card">
+        <h2>महत्त्वाची माहिती</h2>
+
+        <p>
+          प्रकाशित केलेली बातमी किंवा ई-पेपर सार्वजनिक
+          वेबसाइटवर दिसेल.
+        </p>
+
+        <p>
+          ई-पेपरमधील निवडलेली सर्व पेजेस एकाच आवृत्तीमध्ये
+          जोडली जातील.
+        </p>
+      </div>
+    </main>
+  );
+  }
