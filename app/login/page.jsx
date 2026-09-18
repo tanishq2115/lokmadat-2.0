@@ -11,8 +11,8 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin(e) {
-    e.preventDefault();
+  async function handleLogin(event) {
+    event.preventDefault();
 
     setLoading(true);
     setMessage("");
@@ -33,9 +33,7 @@ export default function LoginPage() {
 
   return (
     <main className="login-page">
-
       <div className="login-card">
-
         <img
           src="/lokmadat-logo.png"
           alt="लोकमदत"
@@ -49,29 +47,24 @@ export default function LoginPage() {
         </p>
 
         <form onSubmit={handleLogin}>
-
-          <label htmlFor="email">
-            ई-मेल
-          </label>
+          <label htmlFor="email">ई-मेल</label>
 
           <input
             id="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             placeholder="आपला ई-मेल"
             required
           />
 
-          <label htmlFor="password">
-            पासवर्ड
-          </label>
+          <label htmlFor="password">पासवर्ड</label>
 
           <input
             id="password"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
             placeholder="पासवर्ड"
             required
           />
@@ -82,21 +75,15 @@ export default function LoginPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-          >
+          <button type="submit" disabled={loading}>
             {loading ? "लॉगिन करत आहे..." : "लॉगिन"}
           </button>
-
         </form>
 
         <a href="/">
           ← मुख्यपृष्ठावर जा
         </a>
-
       </div>
-
     </main>
   );
 }
