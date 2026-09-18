@@ -1,3 +1,15 @@
-import './globals.css';
-export const metadata={metadataBase:new URL('https://metrocitynews.co.in'),title:{default:'लोकमदत | मराठी बातम्या',template:'%s | लोकमदत'},description:'लोकमदत — ताज्या मराठी बातम्या, स्थानिक घडामोडी आणि डिजिटल ई-पेपर.'};
-export default function RootLayout({children}){return <html lang="mr"><body>{children}</body></html>}
+import "./globals.css";
+
+export const metadata = {
+  title: "लोकमदत | महाराष्ट्रातील ताज्या बातम्या",
+  description:
+    "लोकमदत — महाराष्ट्रातील ताज्या आणि महत्त्वाच्या बातम्या.",
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="mr">
+      <body>{children}</body>
+    </html>
+  );
+}
