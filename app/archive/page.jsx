@@ -1,122 +1,94 @@
 import Link from "next/link";
+import Header from "../../components/Header";
 import { createClient } from "../../lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-async function getNews() {
+export default async function ArchivePage() {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  const { data: news, error } = await supabase
     .from("news")
     .select("*")
-    .eq("published", true)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error(error);
-    return [];
-  }
-
-  return data || [];
-}
-
-export default async function ArchivePage() {
-  const news = await getNews();
+    .eq("status", "published")
+    .neq("epaper_layout", "direct-newspaper")
+    .order("published_at", { ascending: false });
 
   return (
-    <main className="archive-page">
-      <div className="archive-container">
+    <>
+      <Header />
 
-        <div className="archive-heading">
+      <main className="page">
+        <div className="page-header">
           <Link href="/" className="back-link">
             ← मुख्यपृष्ठ
           </Link>
 
-          <h1>📰 बातम्यांचे संग्रहालय</h1>
-          <p>लोकमदतमधील प्रकाशित बातम्या</p>
+          <h1>सर्व बातम्या</h1>
+          <p>लोकमदतच्या प्रकाशित बातम्यांचा संग्रह</p>
         </div>
 
-        {news.length === 0 ? (
+        {error ? (
           <div className="empty-state">
-            सध्या कोणत्याही बातम्या उपलब्ध नाहीत.
+            <h2>बातम्या लोड करता आल्या नाहीत</h2>
+            <p>कृपया पुन्हा प्रयत्न करा.</p>
+          </div>
+        ) : !news || news.length === 0 ? (
+          <div className="empty-state">
+            <h2>बातम्या उपलब्ध नाहीत</h2>
           </div>
         ) : (
-          <div className="archive-list">
-
+          <div className="news-grid">
             {news.map((item) => {
               const title =
-                item.header ||
+                item.headline ||
                 item.title ||
                 "लोकमदत बातमी";
 
               const image =
+                item.main_image_url ||
                 item.image_url ||
                 item.cover_image ||
-                item.image ||
-                null;
-
-              const date =
-                item.published_at ||
-                item.created_at;
+                item.image;
 
               return (
-                <article
-                  className="archive-card"
+                <Link
+                  href={`/news/${item.id}`}
+                  className="news-card"
                   key={item.id}
                 >
-
                   {image && (
                     <img
                       src={image}
                       alt={title}
-                      className="archive-card-image"
+                      className="news-card-image"
                     />
                   )}
 
-                  <div className="archive-card-content">
+                  <div className="news-card-content">
+                    <h2>{title}</h2>
 
-                    <h2>
-                      <Link href={`/news/${item.id}`}>
-                        {title}
-                      </Link>
-                    </h2>
+                    <div className="news-meta">
+                      {item.location && (
+                        <span>📍 {item.location}</span>
+                      )}
 
-                    {item.location && (
-                      <div className="archive-location">
-                        📍 {item.location}
-                      </div>
-                    )}
-
-                    {date && (
-                      <div className="archive-date">
-                        {new Date(date).toLocaleDateString(
-                          "mr-IN",
-                          {
-                            day: "2-digit",
-                            month: "long",
-                            year: "numeric",
-                          }
-                        )}
-                      </div>
-                    )}
-
-                    <Link
-                      href={`/news/${item.id}`}
-                      className="read-more"
-                    >
-                      बातमी वाचा →
-                    </Link>
-
+                      {item.published_at && (
+                        <span>
+                          {" • "}
+                          {new Date(
+                            item.published_at
+                          ).toLocaleDateString("mr-IN")}
+                        </span>
+                      )}
+                    </div>
                   </div>
-
-                </article>
+                </Link>
               );
             })}
-
           </div>
         )}
-
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
