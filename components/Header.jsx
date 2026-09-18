@@ -1,1 +1,1 @@
-
+export default function Header(){return <header className="site-header"><div className="container mast"><a className="logo" href="/"><span>लोक</span>मदत</a><div className="eyebrow">MARATHI DIGITAL NEWS</div><div className="top-actions"><a href="/archive">सर्व बातम्या</a><a href="/admin">न्यूजरूम</a></div></div><nav className="nav"><div className="container nav-inner"><a href="/">मुख्यपृष्ठ</a><a href="/archive">ताज्या बातम्या</a><a href="/epaper">ई-पेपर</a></div></nav></header>}
