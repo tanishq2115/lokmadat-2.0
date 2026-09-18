@@ -3,114 +3,96 @@ import { createClient } from "../../lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-async function getEPapers() {
+export default async function EPaperPage() {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  const { data: editions, error } = await supabase
     .from("news")
     .select("*")
-    .eq("published", true)
+    .eq("status", "published")
     .eq("epaper_layout", "direct-newspaper")
     .order("published_at", { ascending: false });
 
   if (error) {
-    console.error(error);
-    return [];
+    return (
+      <main className="page">
+        <h1>ई-पेपर</h1>
+        <p>ई-पेपर लोड करताना समस्या आली.</p>
+      </main>
+    );
   }
 
-  return data || [];
-}
-
-export default async function EpaperPage() {
-  const papers = await getEPapers();
-
   return (
-    <main className="epaper-page">
+    <main className="page">
+      <div className="page-header">
+        <Link href="/" className="back-link">
+          ← मुख्यपृष्ठ
+        </Link>
 
-      <div className="epaper-container">
+        <h1>ई-पेपर</h1>
+        <p>लोकमदतच्या प्रकाशित ई-पेपर आवृत्त्या</p>
+      </div>
 
-        <div className="epaper-top">
-          <Link href="/">
-            ← मुख्यपृष्ठ
-          </Link>
+      {!editions || editions.length === 0 ? (
+        <div className="empty-state">
+          <h2>ई-पेपर उपलब्ध नाही</h2>
+          <p>सध्या कोणतीही ई-पेपर आवृत्ती प्रकाशित केलेली नाही.</p>
         </div>
+      ) : (
+        <div className="epaper-list">
+          {editions.map((edition) => {
+            const title =
+              edition.headline ||
+              edition.title ||
+              "लोकमदत ई-पेपर";
 
-        <header className="epaper-heading">
-          <small>E-PAPER</small>
-          <h1>लोकमदत ई-पेपर</h1>
-          <p>
-            प्रकाशित झालेले सर्व ई-पेपर अंक
-          </p>
-        </header>
+            const image =
+              edition.main_image_url ||
+              edition.image_url ||
+              edition.cover_image ||
+              edition.image;
 
-        {papers.length === 0 ? (
-          <div className="empty-state">
-            सध्या कोणताही ई-पेपर उपलब्ध नाही.
-          </div>
-        ) : (
-          <div className="epaper-list">
+            return (
+              <article className="epaper-card" key={edition.id}>
+                {image && (
+                  <img
+                    src={image}
+                    alt={title}
+                    className="epaper-cover"
+                  />
+                )}
 
-            {papers.map((paper) => {
+                <div className="epaper-card-content">
+                  <h2>{title}</h2>
 
-              const image =
-                paper.main_image_url ||
-                paper.image_url ||
-                null;
-
-              const date =
-                paper.published_at ||
-                paper.created_at;
-
-              return (
-                <article
-                  className="epaper-card"
-                  key={paper.id}
-                >
-
-                  {image && (
-                    <img
-                      src={image}
-                      alt={paper.headline || "लोकमदत ई-पेपर"}
-                    />
+                  {edition.location && (
+                    <p>📍 {edition.location}</p>
                   )}
 
-                  <div className="epaper-card-content">
+                  {edition.published_at && (
+                    <p>
+                      📅{" "}
+                      {new Date(
+                        edition.published_at
+                      ).toLocaleDateString("mr-IN")}
+                    </p>
+                  )}
 
-                    <h2>
-                      {paper.headline ||
-                        "लोकमदत ई-पेपर"}
-                    </h2>
-
-                    {paper.location && (
-                      <p>
-                        📍 {paper.location}
-                      </p>
-                    )}
-
-                    {date && (
-                      <small>
-                        {new Date(date).toLocaleDateString(
-                          "mr-IN",
-                          {
-                            day: "2-digit",
-                            month: "long",
-                            year: "numeric",
-                          }
-                        )}
-                      </small>
-                    )}
-
-                    <Link
-                      href={`/news/${paper.id}`}
-                      className="epaper-open"
-                    >
-                      ई-पेपर उघडा →
-                    </Link>
-
-                  </div>
-
-                </article>
-              );
+                  <Link
+                    href={`/news/${edition.id}`}
+                    className="read-button"
+                  >
+                    ई-पेपर वाचा →
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </main>
+  );
+}              );
             })}
 
           </div>
