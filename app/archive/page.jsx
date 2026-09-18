@@ -15,7 +15,7 @@ export default async function ArchivePage() {
     .order("published_at", { ascending: false });
 
   return (
-    <>
+    <div>
       <Header />
 
       <main className="page">
@@ -30,12 +30,17 @@ export default async function ArchivePage() {
 
         {error ? (
           <div className="empty-state">
-            <h2>बातम्या लोड करता आल्या नाहीत</h2>
-            <p>कृपया पुन्हा प्रयत्न करा.</p>
+            <div className="news-card-content">
+              <h2>बातम्या लोड करता आल्या नाहीत</h2>
+              <p>कृपया काही वेळाने पुन्हा प्रयत्न करा.</p>
+            </div>
           </div>
         ) : !news || news.length === 0 ? (
           <div className="empty-state">
-            <h2>बातम्या उपलब्ध नाहीत</h2>
+            <div className="news-card-content">
+              <h2>बातम्या उपलब्ध नाहीत</h2>
+              <p>अद्याप कोणतीही बातमी प्रकाशित केलेली नाही.</p>
+            </div>
           </div>
         ) : (
           <div className="news-grid">
@@ -51,12 +56,12 @@ export default async function ArchivePage() {
                 item.cover_image ||
                 item.image;
 
+              const preview = item.content
+                ? item.content.slice(0, 150)
+                : "";
+
               return (
-                <Link
-                  href={`/news/${item.id}`}
-                  className="news-card"
-                  key={item.id}
-                >
+                <article className="news-card" key={item.id}>
                   {image && (
                     <img
                       src={image}
@@ -68,27 +73,36 @@ export default async function ArchivePage() {
                   <div className="news-card-content">
                     <h2>{title}</h2>
 
-                    <div className="news-meta">
-                      {item.location && (
-                        <span>📍 {item.location}</span>
-                      )}
+                    {item.location && (
+                      <p>📍 {item.location}</p>
+                    )}
 
-                      {item.published_at && (
-                        <span>
-                          {" • "}
-                          {new Date(
-                            item.published_at
-                          ).toLocaleDateString("mr-IN")}
-                        </span>
-                      )}
-                    </div>
+                    {item.published_at && (
+                      <p>
+                        📅{" "}
+                        {new Date(
+                          item.published_at
+                        ).toLocaleDateString("mr-IN")}
+                      </p>
+                    )}
+
+                    {preview && (
+                      <p>{preview}...</p>
+                    )}
+
+                    <Link
+                      href={`/news/${item.id}`}
+                      className="read-button"
+                    >
+                      पूर्ण बातमी वाचा →
+                    </Link>
                   </div>
-                </Link>
+                </article>
               );
             })}
           </div>
         )}
       </main>
-    </>
+    </div>
   );
 }
