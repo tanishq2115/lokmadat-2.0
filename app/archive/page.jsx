@@ -1,1 +1,122 @@
-import Header from '../../components/Header';import {supabaseServer,publicImage} from '../../lib/supabase';export const revalidate=60;export default async function Archive(){const {data:rows=[]}=await supabaseServer().from('news').select('id,headline,subheadline,content,main_image_url,published_at,created_at,categories(name)').eq('status','published').neq('epaper_layout','direct-newspaper').order('published_at',{ascending:false,nullsFirst:false}).limit(100);return <><Header/><main className="container archive"><div className="eyebrow">WRITTEN NEWS ARCHIVE</div><h1>लिखित बातम्यांचा संग्रह</h1><div className="story-grid">{rows.map(r=><a className="card story" key={r.id} href={`/news/${r.id}`}><div className="card-img">{publicImage(r.main_image_url)&&<img src={publicImage(r.main_image_url)} alt=""/>}</div><div className="card-body"><div className="meta">{r.categories?.name||'बातमी'}</div><h3>{r.headline}</h3><p>{(r.subheadline||r.content||'').slice(0,130)}</p></div></a>)}</div></main></>}
+import Link from "next/link";
+import { createClient } from "../../lib/supabase";
+
+export const dynamic = "force-dynamic";
+
+async function getNews() {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("news")
+    .select("*")
+    .eq("published", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export default async function ArchivePage() {
+  const news = await getNews();
+
+  return (
+    <main className="archive-page">
+      <div className="archive-container">
+
+        <div className="archive-heading">
+          <Link href="/" className="back-link">
+            ← मुख्यपृष्ठ
+          </Link>
+
+          <h1>📰 बातम्यांचे संग्रहालय</h1>
+          <p>लोकमदतमधील प्रकाशित बातम्या</p>
+        </div>
+
+        {news.length === 0 ? (
+          <div className="empty-state">
+            सध्या कोणत्याही बातम्या उपलब्ध नाहीत.
+          </div>
+        ) : (
+          <div className="archive-list">
+
+            {news.map((item) => {
+              const title =
+                item.header ||
+                item.title ||
+                "लोकमदत बातमी";
+
+              const image =
+                item.image_url ||
+                item.cover_image ||
+                item.image ||
+                null;
+
+              const date =
+                item.published_at ||
+                item.created_at;
+
+              return (
+                <article
+                  className="archive-card"
+                  key={item.id}
+                >
+
+                  {image && (
+                    <img
+                      src={image}
+                      alt={title}
+                      className="archive-card-image"
+                    />
+                  )}
+
+                  <div className="archive-card-content">
+
+                    <h2>
+                      <Link href={`/news/${item.id}`}>
+                        {title}
+                      </Link>
+                    </h2>
+
+                    {item.location && (
+                      <div className="archive-location">
+                        📍 {item.location}
+                      </div>
+                    )}
+
+                    {date && (
+                      <div className="archive-date">
+                        {new Date(date).toLocaleDateString(
+                          "mr-IN",
+                          {
+                            day: "2-digit",
+                            month: "long",
+                            year: "numeric",
+                          }
+                        )}
+                      </div>
+                    )}
+
+                    <Link
+                      href={`/news/${item.id}`}
+                      className="read-more"
+                    >
+                      बातमी वाचा →
+                    </Link>
+
+                  </div>
+
+                </article>
+              );
+            })}
+
+          </div>
+        )}
+
+      </div>
+    </main>
+  );
+}
