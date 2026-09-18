@@ -1,48 +1,62 @@
 "use client";
 
+import { useState } from "react";
+
 export default function ShareButtons({ title }) {
-  const shareUrl =
-    typeof window !== "undefined"
-      ? window.location.href
-      : "";
+  const [copied, setCopied] = useState(false);
+
+  async function getShareUrl() {
+    return window.location.href;
+  }
 
   async function shareToApps() {
+    const url = await getShareUrl();
+
     if (navigator.share) {
       try {
         await navigator.share({
           title: title || "लोकमदत",
-          url: shareUrl,
+          text: title || "लोकमदत",
+          url,
         });
-      } catch (error) {
-        // User cancelled sharing
+      } catch {
+        // User cancelled sharing.
       }
-    } else {
-      await copyLink();
-      alert("Link copied. You can share it in any app.");
+      return;
     }
+
+    await copyLink();
   }
 
   async function shareToWhatsApp() {
-    const text = `${title || "लोकमदत"}\n${shareUrl}`;
+    const url = await getShareUrl();
+
+    const text = `${title || "लोकमदत"}\n${url}`;
 
     window.open(
       `https://wa.me/?text=${encodeURIComponent(text)}`,
-      "_blank"
+      "_blank",
+      "noopener,noreferrer"
     );
   }
 
   async function copyLink() {
+    const url = await getShareUrl();
+
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      alert("Link copied!");
-    } catch (error) {
-      alert("Unable to copy link.");
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch {
+      window.prompt("ही लिंक कॉपी करा:", url);
     }
   }
 
   return (
     <div className="article-share">
-
       <button
         type="button"
         className="share-primary"
@@ -63,9 +77,8 @@ export default function ShareButtons({ title }) {
         type="button"
         onClick={copyLink}
       >
-        🔗 Copy Link
+        {copied ? "✅ Link Copied" : "🔗 Copy Link"}
       </button>
-
     </div>
   );
 }
